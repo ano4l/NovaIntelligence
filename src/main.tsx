@@ -1,61 +1,1229 @@
-import React,{useEffect,useState} from 'react';
-import {createRoot} from 'react-dom/client';
-import {LayoutDashboard,ScanSearch,Inbox,Library,Blocks,ShieldCheck,Settings,Menu,X,ArrowUpRight,UploadCloud,Check,Clock3,FileCheck2,ChevronDown,Search,SlidersHorizontal,Hash,UserRoundCheck,PanelLeftClose,PanelLeftOpen} from 'lucide-react';
-import './styles.css';
-
-type View='Overview'|'Evaluations'|'Intake'|'Rule library'|'Audit ledger'|'Review queue'|'Verification'|'Settings';
-const rows=[
- {employer:'Acacia Manufacturing',period:'August 2026',deduct:'25 Aug 2026',bcea:'01 Sep 2026',pfa:'07 Sep 2026',delta:'6 days',status:'Timing exposure',reviewer:'Thandi M.'},
- {employer:'Umoya Logistics',period:'August 2026',deduct:'29 Aug 2026',bcea:'05 Sep 2026',pfa:'07 Sep 2026',delta:'2 days',status:'Timing exposure',reviewer:'Unassigned'},
- {employer:'Cape Meridian Services',period:'August 2026',deduct:'31 Aug 2026',bcea:'07 Sep 2026',pfa:'07 Sep 2026',delta:'0 days',status:'Within configured window',reviewer:'—'},
- {employer:'Karoo Industrial Group',period:'July 2026',deduct:'28 Jul 2026',bcea:'04 Aug 2026',pfa:'07 Aug 2026',delta:'3 days',status:'Timing exposure',reviewer:'Lerato N.'}
-];
-const ledger=[['000284','Evaluation completed','System','LAW-2.4.1','9d4a…e81c'],['000283','Review route created','Thandi M.','FLOW-1.8','3f2b…4c09'],['000282','Source file normalized','System','INGEST-3.2','e663…a11b'],['000281','Rule set activated','Sipho K.','LAW-2.4.1','0ae7…d902']];
-const nav:[View,any][]=[['Overview',LayoutDashboard],['Evaluations',ScanSearch],['Intake',Inbox],['Rule library',Library],['Audit ledger',Blocks],['Review queue',UserRoundCheck]];
-
-function App(){
- const [view,setView]=useState<View>('Overview'),[menu,setMenu]=useState(false),[compact,setCompact]=useState(false),[intake,setIntake]=useState(false),[detail,setDetail]=useState<any>(null),[verify,setVerify]=useState<'idle'|'running'|'done'>('idle'),[period,setPeriod]=useState('Aug 2026'),[stage,setStage]=useState(0);
- useEffect(()=>{if(verify==='running'){const t=setTimeout(()=>setVerify('done'),1500);return()=>clearTimeout(t)}},[verify]);
- useEffect(()=>{if(!intake&&!detail)return;const previous=document.activeElement as HTMLElement|null;const dialog=document.querySelector<HTMLElement>(detail?'.drawer':'.modal');const focusable=()=>Array.from(dialog?.querySelectorAll<HTMLElement>('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')||[]).filter(el=>!el.hasAttribute('disabled'));const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.preventDefault();setIntake(false);setDetail(null);setStage(0)}if(e.key==='Tab'){const items=focusable();if(!items.length)return;const first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}};requestAnimationFrame(()=>focusable()[0]?.focus());document.addEventListener('keydown',onKey);return()=>{document.removeEventListener('keydown',onKey);previous?.focus()}},[intake,detail]);
- const go=(v:View)=>{setView(v);setMenu(false);if(v==='Intake')setIntake(true)};
- return <div className="app">
-  <aside className={`${menu?'open':''} ${compact?'compact':''}`}>
-   <div className="brand"><span className="brandmark">N<span>●</span></span>{!compact&&<div><b>NOVA.</b><small>INTELLIGENCE</small></div>}<button className="icon collapse" onClick={()=>setCompact(!compact)}>{compact?<PanelLeftOpen/>:<PanelLeftClose/>}</button></div>
-   {!compact&&<button className="tenant"><i>NA</i><span><b>Northstar Admin</b><small>Demo environment</small></span><ChevronDown/></button>}
-   <nav aria-label="Primary navigation">{nav.map(([n,I])=><button key={n} className={view===n?'active':''} onClick={()=>go(n)} title={n}><I/>{!compact&&<span>{n}</span>}{n==='Review queue'&&!compact&&<em>03</em>}</button>)}</nav>
-   <div className="aside-bottom"><button onClick={()=>go('Verification')}><ShieldCheck/>{!compact&&'Verification'}</button><button onClick={()=>go('Settings')}><Settings/>{!compact&&'Settings'}</button>{!compact&&<div className="operator"><div>TM</div><span><b>Thandi Mokoena</b><small>Compliance operator</small></span><i></i></div>}</div>
-  </aside>
-  <main>
-   <header className="top"><button className="mobile-menu icon" onClick={()=>setMenu(true)} aria-label="Open navigation"><Menu/></button><div className="title-block"><span className="eyebrow">NOVA / LAWOS / <b>{view.toUpperCase()}</b></span><h1>{view==='Overview'?'Operational overview':view}</h1><p>{view==='Overview'?'Monitor configured deadlines, evidence and reviewer work from one controlled record.':'Deterministic facts, versioned rules and human decisions in one evidence trail.'}</p></div><div className="header-actions"><label className="period">Period <select value={period} onChange={e=>setPeriod(e.target.value)}><option>Aug 2026</option><option>Jul 2026</option><option>Q3 2026</option></select></label><button className="primary intake-button" onClick={()=>setIntake(true)}><UploadCloud/> <span className="desktop-label">Run intake</span><span className="mobile-label">Intake</span></button></div></header>
-   <div className="statusline"><span><i className="blue"></i>Demo data</span><span><i className="blue"></i>Deterministic engine</span><span><ShieldCheck/> Ledger verified · 20 Sep 2026, 09:42 SAST</span></div>
-   {view==='Overview'?<Overview period={period} open={setDetail}/>:view==='Evaluations'?<Evaluations open={setDetail}/>:view==='Rule library'?<Rules/>:view==='Audit ledger'||view==='Verification'?<Ledger verify={verify} setVerify={setVerify}/>:<Generic view={view}/>}
-   <footer><span>Nova Intelligence · Showcase build</span><p>This interface reports configured deadline facts. It does not determine breach or predict regulatory action.</p><span>ZA / SAST</span></footer>
-  </main>
-  {menu&&<button className="scrim" onClick={()=>setMenu(false)} aria-label="Close menu"/>}
-  {intake&&<Intake stage={stage} setStage={setStage} close={()=>{setIntake(false);setStage(0)}}/>}
-  {detail&&<Detail item={detail} close={()=>setDetail(null)}/>} 
- </div>
+import React, { useEffect, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
+import {
+  Menu,
+  Search,
+  ChevronRight,
+  Download,
+  Printer,
+  X,
+  Plus,
+  ShieldCheck,
+  MoreHorizontal,
+  CheckCircle2,
+} from "lucide-react";
+import BranchedMenu from "./components/BranchedMenu";
+import IntakeWorkflow from "./components/IntakeWorkflow";
+import StatusMark from "./components/StatusMark";
+import ThoughtLine from "./components/ThoughtLine";
+import {
+  runs as seedRuns,
+  events as seedEvents,
+  cases as seedCases,
+} from "./data/demo";
+import type { Run, View, LedgerEvent } from "./types";
+import "./styles.css";
+function Shell({
+  view,
+  setView,
+  reviewCount,
+  children,
+}: {
+  view: View;
+  setView: (v: View) => void;
+  reviewCount: number;
+  children: React.ReactNode;
+}) {
+  const [mobile, setMobile] = useState(false);
+  const mobileRef = useRef<HTMLElement>(null);
+  const openerRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    document.body.style.overflow = mobile ? "hidden" : "";
+    const e = (x: KeyboardEvent) => {
+      if (x.key === "Escape") setMobile(false);
+      if (x.key === "Tab" && mobileRef.current) {
+        const focusable = [
+          ...mobileRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          ),
+        ];
+        if (!focusable.length) return;
+        const first = focusable[0],
+          last = focusable[focusable.length - 1];
+        if (x.shiftKey && document.activeElement === first) {
+          x.preventDefault();
+          last.focus();
+        } else if (!x.shiftKey && document.activeElement === last) {
+          x.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    addEventListener("keydown", e);
+    if (mobile)
+      requestAnimationFrame(() =>
+        mobileRef.current?.querySelector<HTMLElement>("button")?.focus(),
+      );
+    else openerRef.current?.focus();
+    return () => removeEventListener("keydown", e);
+  }, [mobile]);
+  const nav = (
+    <>
+      <div className="brand">
+        <i>N</i>
+        <span>
+          Nova<strong>Intelligence</strong>
+        </span>
+      </div>
+      <div className="tenant">
+        <span>NM</span>
+        <div>
+          <b>Nova Meridian</b>
+          <small>South Africa · production demo</small>
+        </div>
+      </div>
+      <BranchedMenu
+        active={view}
+        reviewCount={reviewCount}
+        onSelect={(v) => {
+          setView(v);
+          setMobile(false);
+        }}
+      />
+      <div className="rail-foot">
+        <div className="operator">
+          <span>LM</span>
+          <div>
+            <b>Lerato Mokoena</b>
+            <small>Compliance operator</small>
+          </div>
+          <MoreHorizontal size={16} />
+        </div>
+        <p>
+          <ShieldCheck size={13} /> Local deterministic demo
+        </p>
+      </div>
+    </>
+  );
+  return (
+    <div className="shell">
+      <aside className="rail" inert={mobile ? true : undefined}>
+        {nav}
+      </aside>
+      {mobile && (
+        <>
+          <button
+            className="scrim"
+            aria-label="Close menu"
+            onClick={() => setMobile(false)}
+          />
+          <aside
+            ref={mobileRef}
+            className="mobile-rail"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Primary navigation"
+          >
+            <button
+              className="close"
+              aria-label="Close navigation"
+              onClick={() => setMobile(false)}
+            >
+              <X />
+            </button>
+            {nav}
+          </aside>
+        </>
+      )}
+      <header className="mobile-bar" inert={mobile ? true : undefined}>
+        <button
+          ref={openerRef}
+          onClick={() => setMobile(true)}
+          aria-label="Open navigation"
+        >
+          <Menu />
+        </button>
+        <div className="brand">
+          <i>N</i>
+          <span>
+            Nova<strong>Intelligence</strong>
+          </span>
+        </div>
+        <span className="avatar">LM</span>
+      </header>
+      <main inert={mobile ? true : undefined}>{children}</main>
+    </div>
+  );
 }
-
-function Overview({period,open}:{period:string,open:(x:any)=>void}){const count=period==='Jul 2026'?'1,174':'1,248';return <>
- <section className="metrics"><Metric label="Timing exposures" value={period==='Jul 2026'?'07':'12'} sub="4 require review" alert/><div className="metric-facts"><Metric label="Records evaluated" value={count} sub="100% deterministic"/><Metric label="Awaiting review" value="03" sub="Oldest 18 hours"/></div><div className="integrity"><div className="integrity-ring"><span>100%</span></div><div><span className="eyebrow">LEDGER INTEGRITY</span><b>Chain verified</b><small>284 events · head 9d4a…e81c</small></div></div></section>
- <section className="timeline panel"><div className="timeline-head"><div><span className="eyebrow">TEMPORAL ANALYSIS</span><h2>One deduction. Two clocks.</h2><p>Configured statutory clocks diverge on a single source fact.</p></div><div className="case-context"><span>Evaluation</span><b>EVAL-0826-0412</b><small>Acacia Manufacturing · August 2026</small></div></div>
-  <div className="clock-grid"><div className="clock-main"><div className="legend"><span><i className="red"></i>BCEA configured clock</span><span><i className="blue"></i>PFA configured clock</span></div><div className="track"><div className="axis"></div><div className="band"><span>EXPOSURE WINDOW · 6 DAYS</span></div><Tick left="3%" date="25 AUG" label="Deduction recorded"/><Tick left="34%" date="31 AUG" label="Month end"/><Tick left="48%" date="01 SEP" label="BCEA due" red/><Tick left="91%" date="07 SEP" label="PFA due" blue/></div></div>
-  <aside className="calculation"><span className="eyebrow">CALCULATION</span><div><small>BCEA input</small><b>25 Aug + 7 days</b><strong>01 Sep 2026</strong></div><div><small>PFA input</small><b>31 Aug + 7 days</b><strong>07 Sep 2026</strong></div><div className="divergence"><small>Configured divergence</small><strong>6 days</strong></div></aside></div>
-  <div className="wedge"><div><span>FACTUAL TIMING EXPOSURE</span><p>Deadlines differ under the configured rules. Human review determines the appropriate response.</p></div><button onClick={()=>open(rows[0])}>Inspect evidence <ArrowUpRight/></button></div>
- </section>
- <div className="split"><section className="panel table-panel"><div className="section-head"><div><span className="eyebrow">02 / EXPOSURE REGISTER</span><h2>Configured timing facts</h2></div><button className="secondary">View all <ArrowUpRight/></button></div><DataTable data={rows.slice(0,period==='Jul 2026'?1:4)} open={open}/></section>
- <aside className="panel modules"><span className="eyebrow">SYSTEM MODULES</span><h2>Engine state</h2>{[['LawOS','Active','LAW-2.4.1'],['RiskOS','Scoped preview','RISK-0.3'],['AuditOS','Scoped','AUDIT-0.1']].map((x,i)=><div className="module" key={x[0]}><span className={'module-icon m'+i}>0{i+1}</span><div><b>{x[0]}</b><small>{x[1]}</small></div><code>{x[2]}</code></div>)}<div className="note"><ShieldCheck/><p><b>Reproducible by design</b>Every determination binds a rule version to an input hash.</p></div></aside></div>
- <section className="panel ledger-mini"><div className="section-head"><div><span className="eyebrow">03 / RECENT LEDGER ACTIVITY</span><h2>Immutable event trail</h2></div><span className="verified"><Check/> Chain verified</span></div><LedgerTable/></section></>}
-function Metric(p:any){return <article className={'metric '+(p.alert?'alert':'')}><p>{p.label}</p><strong>{p.value}</strong><small>{p.sub}</small></article>}
-function Tick({left,date,label,red,blue}:any){return <div className={'tick '+(red?'redtick ':'')+(blue?'bluetick':'')} style={{left}}><i></i><b>{date}</b><span>{label}</span></div>}
-function DataTable({data,open}:{data:any[],open:(x:any)=>void}){return <><div className="table-wrap desktop-table"><table><thead><tr><th>Employer / period</th><th>Deduction</th><th>BCEA due</th><th>PFA due</th><th>Delta</th><th>Factual status</th><th>Reviewer</th></tr></thead><tbody>{data.map((r,i)=><tr key={i} tabIndex={0} onClick={()=>open(r)} onKeyDown={e=>e.key==='Enter'&&open(r)}><td><b>{r.employer}</b><small>{r.period}</small></td><td>{r.deduct}</td><td>{r.bcea}</td><td>{r.pfa}</td><td><b>{r.delta}</b></td><td><span className={r.delta==='0 days'?'tag ok':'tag'}>{r.status}</span></td><td>{r.reviewer}</td></tr>)}</tbody></table></div><div className="mobile-records">{data.map((r,i)=><button className="record-card" key={i} onClick={()=>open(r)}><span className="record-index">0{i+1}</span><div className="record-title"><b>{r.employer}</b><small>{r.period}</small></div><span className={r.delta==='0 days'?'tag ok':'tag'}>{r.status}</span><dl><div><dt>Deadlines</dt><dd>{r.bcea} / {r.pfa}</dd></div><div><dt>Delta</dt><dd>{r.delta}</dd></div><div><dt>Reviewer</dt><dd>{r.reviewer}</dd></div></dl><span className="inspect">Inspect evidence <ArrowUpRight/></span></button>)}</div></>}
-function LedgerTable(){return <><div className="table-wrap desktop-table"><table><thead><tr><th>Sequence</th><th>Event</th><th>Actor</th><th>Rule version</th><th>Event hash</th></tr></thead><tbody>{ledger.map(r=><tr key={r[0]}>{r.map((c,i)=><td key={i}>{i===0?<b>#{c}</b>:i===4?<code>{c}</code>:c}</td>)}</tr>)}</tbody></table></div><div className="mobile-records ledger-records">{ledger.map(r=><article className="record-card" key={r[0]}><span className="record-index">#{r[0]}</span><div className="record-title"><b>{r[1]}</b><small>{r[2]}</small></div><span className="verified"><Check/> Verified</span><dl><div><dt>Rule version</dt><dd><code>{r[3]}</code></dd></div><div><dt>Event hash</dt><dd><code>{r[4]}</code></dd></div></dl></article>)}</div></>}
-function Evaluations({open}:any){return <section className="panel page-panel"><div className="toolbar"><div className="search"><Search/><input placeholder="Search employer, hash, or evaluation ID"/></div><button className="secondary"><SlidersHorizontal/> Filters</button></div><div className="section-head"><div><span className="eyebrow">EVALUATION REGISTER / 1,248 RECORDS</span><h2>Reproducible determinations</h2></div></div><DataTable data={rows} open={open}/></section>}
-function Rules(){return <section className="panel page-panel"><div className="section-head"><div><span className="eyebrow">CONFIGURATION / VERSION CONTROLLED</span><h2>Rule library</h2></div><button className="primary">New draft</button></div><div className="rule-list">{[['BCEA section 34A','Deduction-relative deadline','LAW-2.4.1','Active'],['Pension Funds Act section 13A','Month-end contribution deadline','LAW-2.4.1','Active'],['Source normalization','Date and employer field mapping','INGEST-3.2','Active']].map((r,i)=><article><span>0{i+1}</span><div><h3>{r[0]}</h3><p>{r[1]}</p></div><code>{r[2]}</code><b><i></i>{r[3]}</b><ArrowUpRight/></article>)}</div><p className="disclaimer">Configured demo values are pending primary-source confirmation. Published versions are immutable and rule changes are never applied retroactively.</p></section>}
-function Ledger({verify,setVerify}:any){return <section className="panel page-panel"><div className="section-head"><div><span className="eyebrow">SHA-256 / HASH-CHAINED</span><h2>Audit ledger</h2></div><button className="primary" disabled={verify==='running'} onClick={()=>setVerify('running')}>{verify==='running'?<><span className="spinner"/> Verifying chain…</>:<><ShieldCheck/> Verify chain</>}</button></div>{verify==='done'&&<div className="verify-result"><Check/><p><b>Chain verified · 284 events</b>Genesis through head hash · completed locally using showcase data</p><code>HEAD 9d4a7f2c…e81c</code></div>}<LedgerTable/><div className="hash-chain"><div><Hash/><span>GENESIS<small>000001</small></span></div><i></i><div><Hash/><span>PREVIOUS HASH<small>e663…a11b</small></span></div><i></i><div className="headhash"><Hash/><span>CHAIN HEAD<small>9d4a…e81c</small></span></div></div></section>}
-function Generic({view}:{view:View}){return <section className="panel empty"><div className="empty-icon"><FileCheck2/></div><span className="eyebrow">{view.toUpperCase()}</span><h2>{view==='Review queue'?'Human judgment, clearly assigned':view==='Settings'?'Workspace configuration':'Controlled data intake'}</h2><p>{view==='Review queue'?'Three factual findings are waiting for a named reviewer. Open an exposure from the overview to inspect its evidence trail.':'This showcase keeps all actions local and deterministic. No external provider or live client system is connected.'}</p><button className="secondary">Return to overview</button></section>}
-function Intake({close,stage,setStage}:any){return <div className="modal-wrap" role="dialog" aria-modal="true"><button className="modal-scrim" onClick={close}/><div className="modal"><button className="icon close" onClick={close}><X/></button><span className="eyebrow">LOCAL INTAKE / SIMULATED</span><h2>{stage===0?'Add a source batch':stage===1?'Review normalization':'Intake staged'}</h2><p className="intro">Files remain in this local showcase. Nothing is uploaded or sent to an external service.</p>{stage===0?<><div className="drop"><UploadCloud/><b>Drop source files here</b><span>or select CSV, XLSX or PDF · max 25 MB each</span><button className="secondary" onClick={()=>setStage(1)}>Choose demo batch</button></div><div className="modal-note"><ShieldCheck/> Documents are parsed into source facts before deterministic evaluation.</div></>:stage===1?<><div className="file-row"><FileCheck2/><div><b>northstar_aug_2026.csv</b><span>1,248 rows · 184 KB</span></div><span className="tag ok">Ready</span></div><div className="mapping"><span>Employer name <b>employer_name</b></span><span>Deduction date <b>deduction_date</b></span><span>Pay period <b>period_end</b></span></div><button className="primary wide" onClick={()=>setStage(2)}>Stage 1,248 source records</button></>:<div className="success"><Check/><h3>Batch staged successfully</h3><p>Evaluation is ready to run against LAW-2.4.1. This is a deterministic showcase result.</p><button className="primary" onClick={close}>View evaluation register</button></div>}</div></div>}
-function Detail({item,close}:any){return <div className="drawer-wrap" role="dialog" aria-modal="true"><button className="modal-scrim" onClick={close}/><aside className="drawer"><button className="icon close" onClick={close}><X/></button><span className="eyebrow">EVALUATION / EVAL-0826-0412</span><h2>{item.employer}</h2><p>{item.period} · LawOS factual determination</p><div className="detail-status"><Clock3/><span><b>{item.status}</b>{item.delta} between configured deadlines</span></div><h3>Source facts</h3><dl><div><dt>Deduction date</dt><dd>{item.deduct}</dd></div><div><dt>Pay period</dt><dd>{item.period}</dd></div><div><dt>Source record</dt><dd>Row 0412</dd></div></dl><h3>Deadline calculations</h3><div className="calc redcalc"><span>BCEA S34A · configured</span><b>{item.bcea}</b><small>Deduction date + 7 calendar days</small></div><div className="calc bluecalc"><span>PFA S13A · configured</span><b>{item.pfa}</b><small>Month end + 7 calendar days</small></div><h3>Provenance</h3><dl><div><dt>Rule version</dt><dd><code>LAW-2.4.1</code></dd></div><div><dt>Input hash</dt><dd><code>sha256:7c6e…a91d</code></dd></div></dl><button className="primary wide"><UserRoundCheck/> Route to reviewer</button><p className="disclaimer">Human review records judgment separately and cannot alter the deterministic calculation.</p></aside></div>}
-
-createRoot(document.getElementById('root')!).render(<App/>);
+const Head = ({
+  kicker,
+  title,
+  text,
+  action,
+}: {
+  kicker: string;
+  title: string;
+  text: string;
+  action?: React.ReactNode;
+}) => (
+  <header className="page-head">
+    <div>
+      <span className="eyebrow">{kicker}</span>
+      <h1>{title}</h1>
+      <p>{text}</p>
+    </div>
+    {action}
+  </header>
+);
+function Overview({
+  go,
+  cases,
+}: {
+  go: (v: View) => void;
+  cases: ReviewCase[];
+}) {
+  return (
+    <section className="workspace">
+      <Head
+        kicker="Operations control plane"
+        title="Configured obligations, rendered as evidence."
+        text="One deterministic view of timing exposure, source facts and human decisions."
+        action={
+          <button className="primary" onClick={() => go("intake")}>
+            <Plus size={16} /> Run intake
+          </button>
+        }
+      />
+      <div className="signal-strip">
+        <div>
+          <small>Open review exposure</small>
+          <strong>R 308,610</strong>
+          <span>
+            Across {cases.filter((item) => item.state !== "resolved").length}{" "}
+            employer records
+          </span>
+        </div>
+        <div>
+          <small>Configured deadlines</small>
+          <strong>98.7%</strong>
+          <span>1,482 facts evaluated</span>
+        </div>
+        <div>
+          <small>Ledger continuity</small>
+          <strong>284 / 284</strong>
+          <span className="green">Chain verified locally</span>
+        </div>
+        <div>
+          <small>Active rule version</small>
+          <strong>v2.4.1</strong>
+          <span>Effective 01 Aug 2026</span>
+        </div>
+      </div>
+      <div className="overview-grid">
+        <article className="panel focal">
+          <div className="panel-head">
+            <div>
+              <span className="eyebrow">Highest configured exposure</span>
+              <h2>Cape Meridian Manufacturing</h2>
+            </div>
+            <StatusMark status="done" label="Facts verified" />
+          </div>
+          <div className="exposure">
+            <div>
+              <small>Configured exposure</small>
+              <strong>R 184,320</strong>
+              <span>48 contribution records</span>
+            </div>
+            <div className="clock">
+              <i />
+              <span>
+                <b>Deduction clock</b>
+                <small>31 Aug → 07 Sep · 7 days</small>
+              </span>
+              <em>On time</em>
+            </div>
+            <div className="clock warning">
+              <i />
+              <span>
+                <b>Payment clock</b>
+                <small>31 Aug → 12 Sep · 12 days</small>
+              </span>
+              <em>+5 days</em>
+            </div>
+          </div>
+          <footer>
+            <p>
+              Requires human review. This is configured timing exposure, not a
+              statutory breach.
+            </p>
+            <button className="text-button" onClick={() => go("reviews")}>
+              Open review case <ChevronRight size={15} />
+            </button>
+          </footer>
+        </article>
+        <article className="panel">
+          <div className="panel-head">
+            <div>
+              <span className="eyebrow">Human review</span>
+              <h2>Priority queue</h2>
+            </div>
+            <b className="count">
+              {String(
+                cases.filter((item) => item.state !== "resolved").length,
+              ).padStart(2, "0")}
+            </b>
+          </div>
+          {cases
+            .filter((item) => item.state !== "resolved")
+            .map((c) => (
+              <button className="queue-row" onClick={() => go("reviews")}>
+                <span>
+                  <b>{c.employer}</b>
+                  <small>{c.reason}</small>
+                </span>
+                <strong>{c.exposure}</strong>
+                <ChevronRight size={15} />
+              </button>
+            ))}
+        </article>
+      </div>
+      <article className="panel recent">
+        <div className="panel-head">
+          <div>
+            <span className="eyebrow">Recent deterministic runs</span>
+            <h2>Evaluation activity</h2>
+          </div>
+          <button className="text-button" onClick={() => go("evaluations")}>
+            View all
+          </button>
+        </div>
+        {seedRuns.map((r) => (
+          <div className="run-row">
+            <StatusMark status={r.status} />
+            <span>
+              <b>{r.id}</b>
+              <small>{r.source}</small>
+            </span>
+            <span>{r.period}</span>
+            <code>{r.anchor}</code>
+            <strong>{r.records} records</strong>
+          </div>
+        ))}
+      </article>
+    </section>
+  );
+}
+function Evaluations({
+  runs,
+  selectedId,
+  events,
+}: {
+  runs: Run[];
+  selectedId?: string;
+  events: LedgerEvent[];
+}) {
+  const [q, setQ] = useState(""),
+    [selected, setSelected] = useState(
+      runs.find((run) => run.id === selectedId) ?? runs[0],
+    ),
+    [employer, setEmployer] = useState("Cape Meridian Manufacturing");
+  useEffect(() => {
+    if (selectedId)
+      setSelected(runs.find((run) => run.id === selectedId) ?? runs[0]);
+  }, [selectedId, runs]);
+  const visible = runs.filter((r) =>
+    (r.id + r.source + r.period).toLowerCase().includes(q.toLowerCase()),
+  );
+  return (
+    <section className="workspace">
+      <Head
+        kicker="Evaluation operations"
+        title="Reproducible runs and evidence"
+        text="Inspect canonical inputs, versioned rules and linked ledger events."
+      />
+      <div className="toolbar">
+        <label className="search">
+          <Search size={16} />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search run, source or period"
+          />
+        </label>
+        <select>
+          <option>All statuses</option>
+          <option>Completed</option>
+          <option>Failed</option>
+        </select>
+        <select>
+          <option>All periods</option>
+          {[...new Set(runs.map((run) => run.period))].map((period) => (
+            <option key={period}>{period}</option>
+          ))}
+        </select>
+      </div>
+      <div className="split">
+        <article className="panel list-pane">
+          <div className="table-head">
+            <span>Run</span>
+            <span>Period</span>
+            <span>Status</span>
+          </div>
+          {visible.map((r) => (
+            <button
+              className="run-list"
+              data-active={selected.id === r.id ? "" : undefined}
+              onClick={() => setSelected(r)}
+            >
+              <span>
+                <b>{r.id}</b>
+                <small>{r.source}</small>
+              </span>
+              <span>{r.period}</span>
+              <StatusMark status={r.status} />
+            </button>
+          ))}
+          {!visible.length && (
+            <div className="empty">
+              <Search />
+              <b>No matching runs</b>
+              <span>Adjust your search or filters.</span>
+            </div>
+          )}
+        </article>
+        <article className="panel detail-pane">
+          <div className="panel-head">
+            <div>
+              <span className="eyebrow">{selected.id}</span>
+              <h2>{selected.period} contribution evaluation</h2>
+            </div>
+            <StatusMark
+              status={selected.status}
+              label={
+                selected.status === "done" ? "Completed" : "Requires attention"
+              }
+            />
+          </div>
+          <div className="meta-grid">
+            <span>
+              <small>Rule version</small>
+              <b>{selected.rule}</b>
+            </span>
+            <span>
+              <small>Input checksum</small>
+              <code>48de9b…a901</code>
+            </span>
+            <span>
+              <small>Ledger anchor</small>
+              <code>{selected.anchor}</code>
+            </span>
+            <span>
+              <small>Records</small>
+              <b>{selected.records}</b>
+            </span>
+          </div>
+          <h3>Record-level inspection</h3>
+          <label className="record-context">
+            Employer context
+            <select
+              value={employer}
+              onChange={(event) => setEmployer(event.target.value)}
+            >
+              <option>Cape Meridian Manufacturing</option>
+              <option>Umoya Logistics Group</option>
+              <option>Karoo Works Ltd</option>
+            </select>
+          </label>
+          <div className="record-table">
+            <div>
+              <b>Record</b>
+              <b>Deduction</b>
+              <b>Payment</b>
+              <b>Amount</b>
+              <b>Finding</b>
+            </div>
+            {[
+              [
+                "CTR-1048",
+                "31 Aug",
+                "07 Sep",
+                "R 42,300",
+                "Within both clocks",
+              ],
+              [
+                "CTR-1049",
+                "31 Aug",
+                "12 Sep",
+                "R 78,200",
+                "Configured timing exposure",
+              ],
+              ["CTR-1050", "31 Aug", "—", "R 63,820", "Requires evidence"],
+            ].map((row) => (
+              <button key={row[0]}>
+                {row.map((cell, index) =>
+                  index === 4 ? (
+                    <StatusMark
+                      key={cell}
+                      status={
+                        cell === "Within both clocks"
+                          ? "done"
+                          : cell === "Requires evidence"
+                            ? "running"
+                            : "failed"
+                      }
+                      label={cell}
+                    />
+                  ) : (
+                    <span key={cell}>{cell}</span>
+                  ),
+                )}
+              </button>
+            ))}
+          </div>
+          <h3>Two-clock evidence · {employer}</h3>
+          <div className="timeline">
+            <span>
+              31 Aug<small>Period end</small>
+            </span>
+            <i />
+            <span>
+              07 Sep<small>Configured due</small>
+            </span>
+            <i className="red" />
+            <span>
+              12 Sep<small>Payment fact</small>
+            </span>
+          </div>
+          <div className="breakdown">
+            <b>
+              <small>Within both clocks</small>43
+            </b>
+            <b>
+              <small>Configured timing exposure</small>3
+            </b>
+            <b>
+              <small>Requires evidence</small>2
+            </b>
+          </div>
+          <details open>
+            <summary>Inspectable process trace</summary>
+            <ol>
+              <li>Canonical input hash confirmed</li>
+              <li>Rule {selected.rule} pinned</li>
+              <li>Both configured clocks evaluated</li>
+              <li>Ledger events linked through {selected.anchor}</li>
+            </ol>
+          </details>
+          <h3>Linked ledger events</h3>
+          <div className="linked-events">
+            {events.slice(0, 3).map((event) => (
+              <div key={event.seq}>
+                <code>{String(event.seq).padStart(4, "0")}</code>
+                <span>
+                  <b>{event.type}</b>
+                  <small>{event.detail}</small>
+                </span>
+                <code>{event.hash}</code>
+              </div>
+            ))}
+          </div>
+          <p className="boundary">
+            Interpretation explains deterministic output and cannot change
+            findings.
+          </p>
+        </article>
+      </div>
+    </section>
+  );
+}
+type ReviewCase = (typeof seedCases)[number];
+function Reviews({
+  cases,
+  setCases,
+  addEvent,
+  removeEvent,
+}: {
+  cases: ReviewCase[];
+  setCases: React.Dispatch<React.SetStateAction<ReviewCase[]>>;
+  addEvent: (e: LedgerEvent) => void;
+  removeEvent: (seq: number) => void;
+}) {
+  const [state, setState] = useState("unassigned"),
+    [assigned, setAssigned] = useState(false),
+    [complete, setComplete] = useState(false),
+    [note, setNote] = useState(""),
+    [disposition, setDisposition] = useState(""),
+    [toast, setToast] = useState(""),
+    [undo, setUndo] = useState<null | (() => void)>(null);
+  const selectedCase = cases.find((item) => item.id === "REV-031")!;
+  const moveCase = (next: ReviewCase["state"], message: string) => {
+    const previous = selectedCase.state;
+    setCases((items) =>
+      items.map((item) =>
+        item.id === selectedCase.id ? { ...item, state: next } : item,
+      ),
+    );
+    setState(next);
+    setUndo(() => () => {
+      setCases((items) =>
+        items.map((item) =>
+          item.id === selectedCase.id ? { ...item, state: previous } : item,
+        ),
+      );
+      setState(previous);
+      setAssigned(previous === "assigned");
+      setComplete(previous === "resolved");
+      removeEvent(285);
+    });
+    act(message);
+  };
+  const act = (s: string) => {
+    setToast(s);
+    setTimeout(() => setToast(""), 3500);
+  };
+  return (
+    <section className="workspace">
+      <Head
+        kicker="Human control"
+        title="Review queue"
+        text="Resolve source facts and record operational dispositions without creating a legal verdict."
+      />
+      <div className="tabs">
+        {["unassigned", "assigned", "evidence", "resolved"].map((x) => (
+          <button
+            data-active={state === x ? "" : undefined}
+            onClick={() => setState(x)}
+          >
+            {x === "evidence"
+              ? "Awaiting evidence"
+              : x.replace(/^./, (m) => m.toUpperCase())}
+            <b>{cases.filter((item) => item.state === x).length}</b>
+          </button>
+        ))}
+      </div>
+      <div className="review-layout">
+        <article className="panel case-list">
+          {cases
+            .filter((c) => c.state === state)
+            .map((c) => (
+              <button data-active="">
+                <span>
+                  <StatusMark
+                    status={c.state === "evidence" ? "running" : "pending"}
+                  />
+                  <b>{c.employer}</b>
+                  <small>
+                    {c.id} · {c.period}
+                  </small>
+                </span>
+                <strong>{c.exposure}</strong>
+                <small>{c.due}</small>
+              </button>
+            ))}
+          {!cases.some((c) => c.state === state) && (
+            <div className="empty">
+              <CheckCircle2 />
+              <b>Queue is clear</b>
+              <span>No cases in this view.</span>
+            </div>
+          )}
+        </article>
+        <article className="panel case-detail">
+          <div className="panel-head">
+            <div>
+              <span className="eyebrow">REV-031 · unassigned</span>
+              <h2>Cape Meridian Manufacturing</h2>
+            </div>
+            <StatusMark
+              status={complete ? "done" : assigned ? "running" : "pending"}
+              label={
+                complete
+                  ? "Review completed"
+                  : assigned
+                    ? "Assigned to you"
+                    : "Awaiting assignment"
+              }
+            />
+          </div>
+          <div className="case-banner">
+            <strong>R 184,320</strong>
+            <span>Configured timing exposure</span>
+            <p>
+              Payment fact is 5 calendar days after the configured second clock.
+            </p>
+          </div>
+          <div className="meta-grid">
+            <span>
+              <small>Rule version</small>
+              <b>LAWOS-SA v2.4.1</b>
+            </span>
+            <span>
+              <small>Source hash</small>
+              <code>48de9b…a901</code>
+            </span>
+            <span>
+              <small>Audit link</small>
+              <code>EVT-00284</code>
+            </span>
+            <span>
+              <small>Evidence</small>
+              <b>2 source artefacts</b>
+            </span>
+          </div>
+          <h3>Reviewer actions</h3>
+          <div className="button-row">
+            <button
+              className="primary"
+              disabled={assigned}
+              onClick={() => {
+                setAssigned(true);
+                moveCase("assigned", "Case assigned to you");
+              }}
+            >
+              Assign to me
+            </button>
+            <button
+              className="quiet"
+              onClick={() =>
+                moveCase("evidence", "Evidence request recorded locally")
+              }
+            >
+              Request supporting evidence
+            </button>
+          </div>
+          <label className="note">
+            Internal note
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Record factual context for the audit trail…"
+            />
+            <button
+              className="quiet"
+              disabled={!note}
+              onClick={() => {
+                act("Internal note added");
+                setNote("");
+              }}
+            >
+              Add note
+            </button>
+          </label>
+          <label className="note">
+            Operational disposition
+            <select
+              value={disposition}
+              onChange={(event) => setDisposition(event.target.value)}
+            >
+              <option value="">Choose a factual disposition</option>
+              <option>Confirmed data timing</option>
+              <option>Source correction required</option>
+              <option>No action under configured rule</option>
+            </select>
+          </label>
+          <button
+            className="primary full"
+            disabled={!assigned || !disposition || complete}
+            onClick={() => {
+              setComplete(true);
+              moveCase("resolved", "Operational disposition recorded");
+              addEvent({
+                seq: 285,
+                type: "REVIEW_COMPLETED",
+                actor: "L. Mokoena",
+                module: "Review",
+                detail: "Operational disposition recorded",
+                hash: "011da9f2…e39c",
+                time: "Just now",
+              });
+            }}
+          >
+            Mark review complete
+          </button>
+          <p className="boundary">
+            Review completion records an operational disposition, not a legal
+            determination.
+          </p>
+        </article>
+      </div>
+      {toast && (
+        <div className="toast" role="status">
+          <CheckCircle2 size={18} />
+          {toast}
+          <button
+            onClick={() => {
+              undo?.();
+              setToast("");
+            }}
+          >
+            Undo
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+function Ledger({
+  events,
+  verify = false,
+}: {
+  events: LedgerEvent[];
+  verify?: boolean;
+}) {
+  const [q, setQ] = useState(""),
+    [eventType, setEventType] = useState(""),
+    [actor, setActor] = useState(""),
+    [moduleFilter, setModuleFilter] = useState(""),
+    [working, setWorking] = useState(false),
+    [result, setResult] = useState<"ok" | "bad" | null>(null),
+    [tampered, setTampered] = useState(false);
+  const steps = [
+    "Reading 284 events",
+    "Recomputing SHA-256 links",
+    "Comparing the chain root",
+    "Confirming rule/input references",
+  ];
+  const run = () => {
+    setWorking(true);
+    setResult(null);
+    setTimeout(() => {
+      setWorking(false);
+      setResult(tampered ? "bad" : "ok");
+    }, 1200);
+  };
+  if (verify)
+    return (
+      <section className="workspace">
+        <Head
+          kicker="Local integrity control"
+          title="Verify an audit chain"
+          text="Recompute links against a prefilled anchor or a local demo artifact."
+        />
+        <div className="verify-grid">
+          <article className="panel">
+            <h2>Verification input</h2>
+            <label className="note">
+              Ledger anchor
+              <input value="EVT-00284 · 6fe4c9…b710" readOnly />
+            </label>
+            <label className="mode">
+              <input
+                type="checkbox"
+                checked={tampered}
+                onChange={(e) => setTampered(e.target.checked)}
+              />
+              <span>
+                <b>Use intentionally tampered demo</b>
+                <small>Tests a controlled failure at sequence 0197.</small>
+              </span>
+            </label>
+            <button className="primary full" onClick={run} disabled={working}>
+              Verify chain locally
+            </button>
+          </article>
+          <article className="panel receipt">
+            {working && <ThoughtLine working steps={steps} />}{" "}
+            {!working && !result && (
+              <div className="empty">
+                <ShieldCheck />
+                <b>Ready to verify</b>
+                <span>No upload or network connection is used.</span>
+              </div>
+            )}
+            {result === "ok" && (
+              <>
+                <StatusMark status="done" label="Chain integrity verified" />
+                <h2>Verification receipt</h2>
+                <div className="receipt-root">
+                  <small>Computed root</small>
+                  <code>6fe4c9e01a7b…b710</code>
+                </div>
+                <dl>
+                  <div>
+                    <dt>Event range</dt>
+                    <dd>0001—0284</dd>
+                  </div>
+                  <div>
+                    <dt>Verified</dt>
+                    <dd>20 Sep 2026 · 16:42 SAST</dd>
+                  </div>
+                  <div>
+                    <dt>References</dt>
+                    <dd>Rule and input confirmed</dd>
+                  </div>
+                </dl>
+                <div className="button-row">
+                  <button className="quiet" onClick={() => window.print()}>
+                    <Printer size={15} /> Print
+                  </button>
+                  <button
+                    className="quiet"
+                    onClick={() => {
+                      const a = document.createElement("a");
+                      a.href = URL.createObjectURL(
+                        new Blob([
+                          "Nova Intelligence demo verification receipt\nRoot: 6fe4c9e01a7b…b710",
+                        ]),
+                      );
+                      a.download = "nova-verification-receipt.txt";
+                      a.click();
+                    }}
+                  >
+                    <Download size={15} /> Export receipt
+                  </button>
+                </div>
+              </>
+            )}
+            {result === "bad" && (
+              <>
+                <StatusMark status="failed" label="Chain mismatch detected" />
+                <h2>Verification failed safely</h2>
+                <div className="error-box">
+                  <b>First mismatch · sequence 0197</b>
+                  <p>
+                    Expected previous hash <code>29f0…0ae1</code>, received{" "}
+                    <code>29f0…92bc</code>.
+                  </p>
+                </div>
+                <p className="boundary">
+                  The verifier has not repaired or changed the demo artifact.
+                </p>
+              </>
+            )}
+          </article>
+        </div>
+      </section>
+    );
+  const visible = events.filter(
+    (e) =>
+      (e.type + e.actor + e.module + e.hash + e.seq)
+        .toLowerCase()
+        .includes(q.toLowerCase()) &&
+      (!eventType || e.type === eventType) &&
+      (!actor || e.actor === actor) &&
+      (!moduleFilter || e.module === moduleFilter),
+  );
+  return (
+    <section className="workspace">
+      <Head
+        kicker="Immutable operational record"
+        title="Audit ledger"
+        text="Search linked events across evaluation and human-review activity."
+      />
+      <div className="toolbar">
+        <label className="search">
+          <Search size={16} />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Sequence, hash, actor or event"
+          />
+        </label>
+        <select
+          aria-label="Event type"
+          value={eventType}
+          onChange={(e) => setEventType(e.target.value)}
+        >
+          <option value="">All event types</option>
+          {[...new Set(events.map((event) => event.type))].map((value) => (
+            <option key={value}>{value}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Actor"
+          value={actor}
+          onChange={(e) => setActor(e.target.value)}
+        >
+          <option value="">All actors</option>
+          {[...new Set(events.map((event) => event.actor))].map((value) => (
+            <option key={value}>{value}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Module"
+          value={moduleFilter}
+          onChange={(e) => setModuleFilter(e.target.value)}
+        >
+          <option value="">All modules</option>
+          {[...new Set(events.map((event) => event.module))].map((value) => (
+            <option key={value}>{value}</option>
+          ))}
+        </select>
+        {(q || eventType || actor || moduleFilter) && (
+          <button
+            className="quiet"
+            onClick={() => {
+              setQ("");
+              setEventType("");
+              setActor("");
+              setModuleFilter("");
+            }}
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+      <article className="panel ledger">
+        <div className="ledger-head">
+          <span>Seq</span>
+          <span>Event</span>
+          <span>Actor / module</span>
+          <span>Hash</span>
+          <span>Time</span>
+        </div>
+        {visible.map((e) => (
+          <div className="ledger-row">
+            <code>{String(e.seq).padStart(4, "0")}</code>
+            <span>
+              <b>{e.type}</b>
+              <small>{e.detail}</small>
+            </span>
+            <span>
+              <b>{e.actor}</b>
+              <small>{e.module}</small>
+            </span>
+            <code>{e.hash}</code>
+            <time>{e.time}</time>
+          </div>
+        ))}
+        {!visible.length && (
+          <div className="empty">
+            <Search />
+            <b>No ledger events match</b>
+            <span>Clear filters to restore all events.</span>
+          </div>
+        )}
+      </article>
+    </section>
+  );
+}
+function Rules() {
+  const [selected, setSelected] = useState(false),
+    [compare, setCompare] = useState(false);
+  const drawerRef = useRef<HTMLElement>(null);
+  const openerRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!selected) return;
+    const background = [
+      ...document.querySelectorAll<HTMLElement>(
+        ".workspace > *:not(.drawer-wrap)",
+      ),
+    ];
+    background.forEach((element) => {
+      element.inert = true;
+    });
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelected(false);
+      if (event.key === "Tab" && drawerRef.current) {
+        const controls = [
+          ...drawerRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input, select, [tabindex]:not([tabindex="-1"])',
+          ),
+        ];
+        const first = controls[0],
+          last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    addEventListener("keydown", onKey);
+    requestAnimationFrame(() =>
+      drawerRef.current?.querySelector<HTMLElement>("button")?.focus(),
+    );
+    return () => {
+      removeEventListener("keydown", onKey);
+      background.forEach((element) => {
+        element.inert = false;
+      });
+      openerRef.current?.focus();
+    };
+  }, [selected]);
+  return (
+    <section className="workspace">
+      <Head
+        kicker="Versioned configuration"
+        title="Rule library"
+        text="Immutable configured deadline facts with traceable source verification."
+      />
+      <div className="rule-grid">
+        {["2.4.1", "2.4.0", "2.3.2"].map((v, i) => (
+          <button
+            ref={i === 0 ? openerRef : undefined}
+            className="panel rule"
+            onClick={() => setSelected(true)}
+          >
+            <StatusMark status={i < 2 ? "done" : "cancelled"} />
+            <span>
+              <b>LAWOS-SA v{v}</b>
+              <small>
+                {i
+                  ? "Superseded configuration"
+                  : "Active · effective 01 Aug 2026"}
+              </small>
+            </span>
+            <em>{[1042, 388, 721][i]} uses</em>
+            <ChevronRight />
+          </button>
+        ))}
+      </div>
+      {selected && (
+        <div className="drawer-wrap">
+          <button
+            className="scrim"
+            aria-label="Close rule details"
+            onClick={() => setSelected(false)}
+          />
+          <aside
+            ref={drawerRef}
+            className="drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rule-title"
+          >
+            <button
+              className="close"
+              aria-label="Close rule details"
+              onClick={() => setSelected(false)}
+            >
+              <X />
+            </button>
+            <span className="eyebrow">Immutable rule metadata</span>
+            <h2 id="rule-title">LAWOS-SA v2.4.1</h2>
+            <StatusMark status="done" label="Source references verified" />
+            <div className="meta-grid vertical">
+              <span>
+                <small>Effective period</small>
+                <b>01 Aug 2026 — current</b>
+              </span>
+              <span>
+                <small>Published by</small>
+                <b>Rules governance team</b>
+              </span>
+              <span>
+                <small>Content hash</small>
+                <code>4ca28f…91d2</code>
+              </span>
+            </div>
+            <h3>Revision timeline</h3>
+            <ol className="revision">
+              <li>
+                <b>v2.4.1</b>
+                <span>Calendar-day basis made explicit</span>
+              </li>
+              <li>
+                <b>v2.4.0</b>
+                <span>Evidence schema aligned</span>
+              </li>
+            </ol>
+            <button
+              className="primary full"
+              onClick={() => setCompare(!compare)}
+            >
+              Compare with v2.4.0
+            </button>
+            {compare && (
+              <div className="diff">
+                <p>
+                  <del>payment_clock_basis: business_days</del>
+                </p>
+                <p>
+                  <ins>payment_clock_basis: calendar_days</ins>
+                </p>
+                <p>
+                  This compares configuration fields, not legal conclusions.
+                </p>
+              </div>
+            )}
+          </aside>
+        </div>
+      )}
+    </section>
+  );
+}
+function App() {
+  const [view, setView] = useState<View>("overview"),
+    [runs, setRuns] = useState(seedRuns),
+    [events, setEvents] = useState(seedEvents),
+    [cases, setCases] = useState<ReviewCase[]>(seedCases),
+    [selectedRunId, setSelectedRunId] = useState<string>();
+  const openEvaluation = (id: string) => {
+    setSelectedRunId(id);
+    setView("evaluations");
+  };
+  let content: React.ReactNode;
+  if (view === "overview") content = <Overview go={setView} cases={cases} />;
+  else if (view === "intake")
+    content = (
+      <IntakeWorkflow
+        onComplete={(r) =>
+          setRuns((s) => (s.some((item) => item.id === r.id) ? s : [r, ...s]))
+        }
+        onOpenEvaluation={openEvaluation}
+      />
+    );
+  else if (view === "evaluations")
+    content = (
+      <Evaluations runs={runs} selectedId={selectedRunId} events={events} />
+    );
+  else if (view === "reviews")
+    content = (
+      <Reviews
+        cases={cases}
+        setCases={setCases}
+        addEvent={(e) =>
+          setEvents((s) => [e, ...s.filter((item) => item.seq !== e.seq)])
+        }
+        removeEvent={(seq) =>
+          setEvents((items) => items.filter((item) => item.seq !== seq))
+        }
+      />
+    );
+  else if (view === "ledger") content = <Ledger events={events} />;
+  else if (view === "verification") content = <Ledger events={events} verify />;
+  else if (view === "rules") content = <Rules />;
+  else
+    content = (
+      <section className="workspace">
+        <Head
+          kicker="Tenant configuration"
+          title="Settings"
+          text="Production controls are shown for demonstration and remain local."
+        />
+        <article className="panel settings">
+          <h2>Operational safeguards</h2>
+          {[
+            "Require human review for configured exposure",
+            "Retain inspectable process traces",
+            "Use Africa/Johannesburg for date normalisation",
+          ].map((x) => (
+            <label>
+              <span>
+                <b>{x}</b>
+                <small>Enabled for this tenant</small>
+              </span>
+              <input type="checkbox" defaultChecked />
+            </label>
+          ))}
+        </article>
+      </section>
+    );
+  return (
+    <Shell
+      view={view}
+      setView={setView}
+      reviewCount={cases.filter((item) => item.state !== "resolved").length}
+    >
+      {content}
+    </Shell>
+  );
+}
+createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);
