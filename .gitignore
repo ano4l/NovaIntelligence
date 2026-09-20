@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.vercel/
+tmp/
+*.tsbuildinfo
+nova-intelligence-*.png
+
+# Internal source material. Do not publish with the showcase.
+Nova-Intelligence-Developer-Brief.pdf
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
